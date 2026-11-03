@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { UploadCloud } from "lucide-react";
+import { isTauriEnvironment, pickFilesFromDialog } from "@/lib/file-picker";
 
 type FilePickerSectionProps = {
-  onFiles?: (files: File[]) => void;
+  onFiles?: (items: Array<string | File>) => void;
   accept?: string;
   multiple?: boolean;
   autoOpen?: boolean;
@@ -17,19 +18,37 @@ export default function FilePickerSection({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  const openPicker = useCallback(async () => {
+    if (isTauriEnvironment()) {
+      const picked = await pickFilesFromDialog({ multiple, accept });
+
+      if (picked.length > 0) {
+        onFiles?.(picked);
+      }
+
+      return;
+    }
+
+    inputRef.current?.click();
+  }, [accept, multiple, onFiles]);
+
   useEffect(() => {
     if (!autoOpen) return;
 
     const timeoutId = window.setTimeout(() => {
-      inputRef.current?.click();
+      void openPicker();
     }, 120);
 
     return () => window.clearTimeout(timeoutId);
-  }, [autoOpen]);
+  }, [autoOpen, openPicker]);
 
   const handleFiles = (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
-    onFiles?.(Array.from(fileList));
+
+    const files = Array.from(fileList);
+    if (files.length > 0) {
+      onFiles?.(files);
+    }
   };
 
   return (
@@ -46,7 +65,9 @@ export default function FilePickerSection({
             setIsDragging(false);
             handleFiles(e.dataTransfer.files);
           }}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => {
+            void openPicker();
+          }}
           className={[
             "group flex cursor-pointer flex-col items-center justify-center gap-4",
             "m-3 rounded-xl border-2 border-dashed p-12 text-center transition-all",
@@ -72,7 +93,7 @@ export default function FilePickerSection({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              inputRef.current?.click();
+              void openPicker();
             }}
             className="bg-plum text-cream shadow-chip mt-2 rounded-lg px-6 py-2.5 text-sm font-medium transition hover:brightness-110 active:scale-[0.98]"
           >

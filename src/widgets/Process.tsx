@@ -5,6 +5,7 @@ import FilePickerSection from "@/components/FilePickerSection";
 import ProcessFooter from "@/components/ProcessFooter";
 import ProcessHeader from "@/components/ProcessHeader";
 import { useSelectedFiles } from "@/context/SelectedFilesContext";
+import { pickFilesFromDialog } from "@/lib/file-picker";
 
 export default function Process() {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ export default function Process() {
           <div className="w-full max-w-4xl">
             <FilePickerSection
               onFiles={(incoming) => {
-                addFiles(incoming);
+                void addFiles(incoming);
                 navigate("/process");
               }}
             />
@@ -36,7 +37,16 @@ export default function Process() {
         <ProcessFooter
           fileCount={0}
           onClearAll={clearFiles}
-          onAddMore={() => fileInputRef.current?.click()}
+          onAddMore={async () => {
+            const picked = await pickFilesFromDialog({
+              multiple: true,
+              accept: "image/*,audio/*,video/*",
+            });
+
+            if (picked.length > 0) {
+              await addFiles(picked);
+            }
+          }}
           isEmpty
         />
       </div>
@@ -51,8 +61,12 @@ export default function Process() {
     updateTargetFormat(id, format);
   };
 
-  const handleAddMore = () => {
-    fileInputRef.current?.click();
+  const handleAddMore = async () => {
+    const picked = await pickFilesFromDialog({ multiple: true, accept: "image/*,audio/*,video/*" });
+
+    if (picked.length > 0) {
+      await addFiles(picked);
+    }
   };
 
   const handleClearAll = () => {

@@ -7,21 +7,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { stat } from "@tauri-apps/plugin-fs";
 import type { SelectedFile } from "@/data/types";
 
-type PersistedFile = Omit<SelectedFile, "file"> & {
-  file?: {
-    name: string;
-    size: number;
-    type: string;
-    lastModified: number;
-  };
-};
+type PersistedFile = SelectedFile;
 
 type SelectedFilesContextValue = {
   files: SelectedFile[];
   setFiles: (files: SelectedFile[]) => void;
-  addFiles: (incoming: File[]) => void;
+  addFiles: (incoming: Array<string | File>) => Promise<void>;
   removeFile: (id: string) => void;
   updateTargetFormat: (id: string, targetFormat: string) => void;
   clearFiles: () => void;
@@ -53,20 +47,16 @@ function parseStoredFiles(): SelectedFile[] {
 
     const parsed = JSON.parse(raw) as PersistedFile[];
 
-    return parsed.map((item) => {
-      const file = item.file
-        ? new File([], item.name, {
-            type: item.type,
-            lastModified: item.file.lastModified ?? Date.now(),
-          })
-        : new File([], item.name, { type: item.type });
-
-      return {
+    return parsed
+      .filter((item) => item.path)
+      .map((item) => ({
         ...item,
-        file,
-        size: item.size || formatFileSize(file.size),
-      };
-    });
+        path: item.path,
+        name: item.name,
+        size: item.size || "0 B",
+        type: item.type || "application/octet-stream",
+        targetFormat: item.targetFormat || "",
+      }));
   } catch {
     return [];
   }
@@ -80,8 +70,9 @@ export function SelectedFilesProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const payload = files.map(({ id, name, size, type, targetFormat }) => ({
+    const payload = files.map(({ id, path, name, size, type, targetFormat }) => ({
       id,
+      path,
       name,
       size,
       type,
@@ -91,17 +82,61 @@ export function SelectedFilesProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [files]);
 
-  const addFiles = useCallback((incoming: File[]) => {
-    const nextFiles = incoming.map((file) => ({
-      id: makeId(),
-      file,
-      name: file.name,
-      size: formatFileSize(file.size),
-      type: file.type || "application/octet-stream",
-      targetFormat: "",
-    }));
+  const addFiles = useCallback(async (incoming: Array<string | File>) => {
+    const items = incoming.map((item) => {
+      if (typeof item === "string") {
+        return { rawPath: item, file: null };
+      }
 
-    setFiles((prev) => [...prev, ...nextFiles]);
+      const path = (item as File & { path?: string }).path ?? "";
+      return { rawPath: path, file: item };
+    });
+
+    const nextFiles = await Promise.all(
+      items.map(async ({ rawPath, file }) => {
+        const path = rawPath || (file ? ((file as File & { path?: string }).path ?? "") : "");
+        const name = file?.name ?? path.split(/[\\/]/).pop() ?? "selected-file";
+        const fileType = name.toLowerCase();
+        let type = "application/octet-stream";
+
+        if (fileType.endsWith(".png")) type = "image/png";
+        else if (fileType.endsWith(".jpg") || fileType.endsWith(".jpeg")) type = "image/jpeg";
+        else if (fileType.endsWith(".webp")) type = "image/webp";
+        else if (fileType.endsWith(".gif")) type = "image/gif";
+        else if (fileType.endsWith(".mp3")) type = "audio/mpeg";
+        else if (fileType.endsWith(".wav")) type = "audio/wav";
+        else if (fileType.endsWith(".ogg")) type = "audio/ogg";
+        else if (fileType.endsWith(".mp4")) type = "video/mp4";
+        else if (fileType.endsWith(".webm")) type = "video/webm";
+        else if (fileType.endsWith(".mov")) type = "video/quicktime";
+        else if (fileType.endsWith(".avi")) type = "video/x-msvideo";
+        else if (fileType.endsWith(".mkv")) type = "video/x-matroska";
+
+        let size = "0 B";
+
+        if (file && typeof file.size === "number" && file.size >= 0) {
+          size = formatFileSize(file.size);
+        } else if (path) {
+          try {
+            const info = await stat(path);
+            size = formatFileSize(info.size);
+          } catch {
+            size = "0 B";
+          }
+        }
+
+        return {
+          id: makeId(),
+          path,
+          name,
+          size,
+          type,
+          targetFormat: "",
+        } satisfies SelectedFile;
+      })
+    );
+
+    setFiles((prev) => [...prev, ...nextFiles.filter((item) => item.name)]);
   }, []);
 
   const removeFile = useCallback((id: string) => {
@@ -114,6 +149,28 @@ export function SelectedFilesProvider({ children }: { children: ReactNode }) {
 
   const clearFiles = useCallback(() => {
     setFiles([]);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleAppShutdown = () => {
+      setFiles([]);
+      window.localStorage.removeItem(STORAGE_KEY);
+    };
+
+    window.addEventListener("beforeunload", handleAppShutdown);
+    window.addEventListener("pagehide", handleAppShutdown);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleAppShutdown);
+      window.removeEventListener("pagehide", handleAppShutdown);
+    };
   }, []);
 
   const value = useMemo<SelectedFilesContextValue>(

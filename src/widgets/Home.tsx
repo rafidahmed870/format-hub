@@ -15,8 +15,8 @@ function Home() {
 
   return (
     <AddFile
-      onFiles={(files) => {
-        addFiles(files);
+      onFiles={(paths) => {
+        void addFiles(paths);
         navigate("/process");
       }}
     />
