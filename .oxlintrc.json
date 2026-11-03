@@ -1,0 +1,54 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "unicorn", "import"],
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "settings": {
+    "react": {
+      "jsxRuntime": "automatic"
+    }
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-debugger": "error",
+    "eqeqeq": ["error", "smart"],
+    "no-var": "error",
+    "prefer-const": "warn",
+
+    "react/jsx-key": "error",
+    "react/jsx-no-duplicate-props": "error",
+    "react/jsx-no-target-blank": "error",
+    "react/no-unknown-property": "error",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+
+    "import/no-unassigned-import": "off",
+
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-unused-vars": "warn",
+    "typescript/consistent-type-imports": "warn"
+  },
+  "ignorePatterns": [
+    "dist",
+    "build",
+    "node_modules",
+    "src-tauri/target",
+    "src-tauri/gen",
+    "coverage"
+  ],
+  "overrides": [
+    {
+      "files": ["*.config.{js,ts}", "vite.config.*", "tailwind.config.*"],
+      "env": { "node": true }
+    }
+  ]
+}
