@@ -1,6 +1,6 @@
 [package]
 name = "format-hub"
-version = "0.1.0"
+version = "1.0.0"
 description = "A fast, offline desktop app to convert images, audio, and video between any format, built with Tauri and Rust."
 authors = ["Rafid Ahmed"]
 edition = "2024"
