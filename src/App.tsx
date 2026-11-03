@@ -5,6 +5,9 @@ import { SelectedFilesProvider } from "@/context/SelectedFilesContext";
 import Home from "@/widgets/Home";
 import Process from "@/widgets/Process";
 
+// পুরনো localStorage key থাকলে একবার clear করে দাও
+window.localStorage.removeItem("format-hub-selected-files");
+
 function App() {
   return (
     <DevToolsGuard>
