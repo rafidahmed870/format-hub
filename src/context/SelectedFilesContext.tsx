@@ -1,16 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { stat } from "@tauri-apps/plugin-fs";
 import type { SelectedFile } from "@/data/types";
-
-type PersistedFile = SelectedFile;
 
 type SelectedFilesContextValue = {
   files: SelectedFile[];
@@ -21,7 +11,6 @@ type SelectedFilesContextValue = {
   clearFiles: () => void;
 };
 
-const STORAGE_KEY = "format-hub-selected-files";
 const SelectedFilesContext = createContext<SelectedFilesContextValue | undefined>(undefined);
 
 function formatFileSize(size: number) {
@@ -36,51 +25,9 @@ function makeId() {
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function parseStoredFiles(): SelectedFile[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw) as PersistedFile[];
-
-    return parsed
-      .filter((item) => item.path)
-      .map((item) => ({
-        ...item,
-        path: item.path,
-        name: item.name,
-        size: item.size || "0 B",
-        type: item.type || "application/octet-stream",
-        targetFormat: item.targetFormat || "",
-      }));
-  } catch {
-    return [];
-  }
-}
-
 export function SelectedFilesProvider({ children }: { children: ReactNode }) {
-  const [files, setFiles] = useState<SelectedFile[]>(() => parseStoredFiles());
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const payload = files.map(({ id, path, name, size, type, targetFormat }) => ({
-      id,
-      path,
-      name,
-      size,
-      type,
-      targetFormat,
-    }));
-
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [files]);
+  // App restart এ সবসময় fresh — কোনো localStorage persist নেই
+  const [files, setFiles] = useState<SelectedFile[]>([]);
 
   const addFiles = useCallback(async (incoming: Array<string | File>) => {
     const items = incoming.map((item) => {
@@ -95,7 +42,7 @@ export function SelectedFilesProvider({ children }: { children: ReactNode }) {
     const nextFiles = await Promise.all(
       items.map(async ({ rawPath, file }) => {
         const path = rawPath || (file ? ((file as File & { path?: string }).path ?? "") : "");
-        const name = file?.name ?? path.split(/[\\/]/).pop() ?? "selected-file";
+        const name = file?.name ?? path.split(/[/\\]/).pop() ?? "selected-file";
         const fileType = name.toLowerCase();
         let type = "application/octet-stream";
 
@@ -149,28 +96,6 @@ export function SelectedFilesProvider({ children }: { children: ReactNode }) {
 
   const clearFiles = useCallback(() => {
     setFiles([]);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const handleAppShutdown = () => {
-      setFiles([]);
-      window.localStorage.removeItem(STORAGE_KEY);
-    };
-
-    window.addEventListener("beforeunload", handleAppShutdown);
-    window.addEventListener("pagehide", handleAppShutdown);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleAppShutdown);
-      window.removeEventListener("pagehide", handleAppShutdown);
-    };
   }, []);
 
   const value = useMemo<SelectedFilesContextValue>(
@@ -182,7 +107,7 @@ export function SelectedFilesProvider({ children }: { children: ReactNode }) {
       updateTargetFormat,
       clearFiles,
     }),
-    [addFiles, clearFiles, files, removeFile, setFiles, updateTargetFormat]
+    [addFiles, clearFiles, files, removeFile, updateTargetFormat]
   );
 
   return <SelectedFilesContext.Provider value={value}>{children}</SelectedFilesContext.Provider>;
