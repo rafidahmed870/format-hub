@@ -94,5 +94,26 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    /* Desktop app feel — no text selection on UI elements */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Buttons and interactive controls always show pointer */
+  button,
+  [role="button"],
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }

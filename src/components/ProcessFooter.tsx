@@ -25,14 +25,14 @@ export default function ProcessFooter({
         <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
           <button
             onClick={onClearAll}
-            className="border-ink/15 bg-cream text-ink hover:bg-soft flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition"
+            className="border-ink/15 bg-cream text-ink hover:bg-soft flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition"
           >
             <X className="size-4" />
             Clear all
           </button>
           <button
             onClick={onAddMore}
-            className="border-ink/15 bg-cream text-ink hover:bg-soft flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition"
+            className="border-ink/15 bg-cream text-ink hover:bg-soft flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition"
           >
             <Plus className="size-4" />
             Add more files
@@ -44,7 +44,7 @@ export default function ProcessFooter({
               "shadow-chip flex items-center gap-2 rounded-md px-6 py-2 text-sm font-medium transition",
               isEmpty
                 ? "bg-plum/60 text-cream cursor-not-allowed opacity-80"
-                : "bg-plum text-cream hover:brightness-110 active:scale-[0.98]",
+                : "bg-plum text-cream cursor-pointer hover:brightness-110 active:scale-[0.98]",
             ].join(" ")}
           >
             <RefreshCw className="size-4" />
