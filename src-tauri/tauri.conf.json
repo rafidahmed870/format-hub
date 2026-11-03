@@ -13,13 +13,11 @@
     "windows": [
       {
         "title": "Format Hub",
-        "minWidth": 1280,
-        "minHeight": 720,
+        "minWidth": 1050,
+        "minHeight": 600,
         "width": 1280,
         "height": 720,
-        "resizable": false,
-        "minimizable": false,
-        "maximizable": false
+        "center": true
       }
     ],
     "security": {
