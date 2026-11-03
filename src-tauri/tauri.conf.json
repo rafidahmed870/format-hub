@@ -12,9 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "format-hub",
-        "width": 800,
-        "height": 600
+        "title": "Format Hub",
+        "minWidth": 1280,
+        "minHeight": 720,
+        "width": 1280,
+        "height": 720,
+        "resizable": false,
+        "minimizable": false,
+        "maximizable": false
       }
     ],
     "security": {
