@@ -1,0 +1,25 @@
+# dependencies
+node_modules
+
+# build output
+dist
+build
+out
+
+# tauri / rust
+src-tauri/target
+src-tauri/gen
+src-tauri/Cargo.lock
+
+# lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+
+# generated / misc
+*.min.js
+*.min.css
+coverage
+.vscode
+.idea
