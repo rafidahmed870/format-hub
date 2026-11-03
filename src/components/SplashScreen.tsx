@@ -42,7 +42,7 @@ function SplashScreen({ onComplete }: { onComplete?: () => void }) {
       <div className="bg-primary/90 pointer-events-none absolute -right-[12vw] -bottom-[16vh] h-[clamp(260px,38vw,680px)] w-[clamp(260px,38vw,680px)] rounded-full" />
 
       {/* Card */}
-      <div className="border-border bg-background/80 relative z-10 flex w-[min(90vw,520px)] flex-col items-center justify-center rounded-md border px-8 py-10 shadow-xl backdrop-blur-sm">
+      <div className="border-border bg-cream relative z-10 flex w-[min(90vw,520px)] flex-col items-center justify-center rounded-md border px-8 py-10 shadow-xl backdrop-blur-sm">
         {/* Logo */}
         <img
           src="/format-hub.png"
