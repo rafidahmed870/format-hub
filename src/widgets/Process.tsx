@@ -16,6 +16,7 @@ export default function Process() {
   const [convertingFileId, setConvertingFileId] = useState<string | null>(null);
   const [conversionProgress, setConversionProgress] = useState<Record<string, number>>({});
   const [convertedFolders, setConvertedFolders] = useState<Record<string, string>>({});
+  const [sizeInfo, setSizeInfo] = useState<Record<string, { before: number; after: number }>>({});
 
   if (files.length === 0) {
     return (
@@ -92,28 +93,61 @@ export default function Process() {
       return alert("Please select format for all files.");
     }
 
+    const BATCH_SIZE = 5;
+
     try {
-      for (let index = 0; index < files.length; index += 1) {
-        const file = files[index];
-        setConvertingFileId(file.id);
-        // Reset this file's progress to 0 before starting
-        setConversionProgress((prev) => ({ ...prev, [file.id]: 0 }));
+      // সব files কে progress 0 এ set করি
+      const initialProgress: Record<string, number> = {};
+      files.forEach((f) => {
+        initialProgress[f.id] = 0;
+      });
+      setConversionProgress(initialProgress);
 
-        // Sequential processing is intentional — each file's progress is shown individually.
+      // 5টা করে chunk ভাগ করি
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        const chunk = files.slice(i, i + BATCH_SIZE);
+
+        // Chunk-এর প্রথম file কে "currently converting" হিসেবে দেখাই
+        setConvertingFileId(chunk[0].id);
+
         // eslint-disable-next-line no-await-in-loop
-        const result = await invoke<{ output_file: string; output_folder: string }>(
-          "convert_media",
+        const results = await invoke<
           {
-            inputPath: file.path,
-            targetFormat: file.targetFormat,
-          }
-        );
+            input_path: string;
+            output_file: string | null;
+            output_folder: string | null;
+            error: string | null;
+            size_before: number | null;
+            size_after: number | null;
+          }[]
+        >("convert_media_batch", {
+          items: chunk.map((f) => ({
+            input_path: f.path,
+            target_format: f.targetFormat,
+          })),
+        });
 
-        setConvertedFolders((prev) => ({
-          ...prev,
-          [file.id]: result.output_folder,
-        }));
-        setConversionProgress((prev) => ({ ...prev, [file.id]: 100 }));
+        // প্রতিটি result process করি — path দিয়ে file id খুঁজি
+        for (const result of results) {
+          const matched = files.find((f) => f.path === result.input_path);
+          if (!matched) continue;
+
+          if (result.error) {
+            alert(`Failed: ${matched.name}\n${result.error}`);
+          } else if (result.output_folder) {
+            setConvertedFolders((prev) => ({
+              ...prev,
+              [matched.id]: result.output_folder!,
+            }));
+            setConversionProgress((prev) => ({ ...prev, [matched.id]: 100 }));
+            if (result.size_before != null && result.size_after != null) {
+              setSizeInfo((prev) => ({
+                ...prev,
+                [matched.id]: { before: result.size_before!, after: result.size_after! },
+              }));
+            }
+          }
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Conversion failed.";
@@ -139,6 +173,7 @@ export default function Process() {
         convertedFolders={convertedFolders}
         convertingFileId={convertingFileId}
         conversionProgress={conversionProgress}
+        sizeInfo={sizeInfo}
         onRemove={handleRemove}
         onFormatChange={handleFormatChange}
         onAddMore={handleAddMore}
