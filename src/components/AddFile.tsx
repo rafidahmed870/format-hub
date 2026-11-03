@@ -97,7 +97,7 @@ export default function AddFile({
                   e.stopPropagation();
                   void openPicker();
                 }}
-                className="bg-plum text-cream shadow-chip mt-2 rounded-lg px-6 py-2.5 text-sm font-medium transition hover:brightness-110 active:scale-[0.98]"
+                className="bg-plum text-cream shadow-chip mt-2 cursor-pointer rounded-lg px-6 py-2.5 text-sm font-medium transition hover:brightness-110 active:scale-[0.98]"
               >
                 Choose files
               </button>

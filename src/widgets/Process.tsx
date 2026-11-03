@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { useRef, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
+import { invoke } from "@tauri-apps/api/core";
+
 import FileList from "@/components/FileList";
 import FilePickerSection from "@/components/FilePickerSection";
 import ProcessFooter from "@/components/ProcessFooter";
@@ -11,6 +13,9 @@ export default function Process() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { files, addFiles, removeFile, updateTargetFormat, clearFiles } = useSelectedFiles();
+  const [convertingFileId, setConvertingFileId] = useState<string | null>(null);
+  const [conversionProgress, setConversionProgress] = useState<Record<string, number>>({});
+  const [convertedFolders, setConvertedFolders] = useState<Record<string, string>>({});
 
   if (files.length === 0) {
     return (
@@ -81,13 +86,41 @@ export default function Process() {
     event.target.value = "";
   };
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
     const hasEmpty = files.some((file) => !file.targetFormat);
     if (hasEmpty) {
       return alert("Please select format for all files.");
     }
 
-    console.warn("Converting...", files);
+    try {
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        setConvertingFileId(file.id);
+        // Reset this file's progress to 0 before starting
+        setConversionProgress((prev) => ({ ...prev, [file.id]: 0 }));
+
+        // Sequential processing is intentional — each file's progress is shown individually.
+        // eslint-disable-next-line no-await-in-loop
+        const result = await invoke<{ output_file: string; output_folder: string }>(
+          "convert_media",
+          {
+            inputPath: file.path,
+            targetFormat: file.targetFormat,
+          }
+        );
+
+        setConvertedFolders((prev) => ({
+          ...prev,
+          [file.id]: result.output_folder,
+        }));
+        setConversionProgress((prev) => ({ ...prev, [file.id]: 100 }));
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Conversion failed.";
+      alert(message);
+    } finally {
+      setConvertingFileId(null);
+    }
   };
 
   return (
@@ -103,11 +136,23 @@ export default function Process() {
 
       <FileList
         files={files}
+        convertedFolders={convertedFolders}
+        convertingFileId={convertingFileId}
+        conversionProgress={conversionProgress}
         onRemove={handleRemove}
         onFormatChange={handleFormatChange}
         onAddMore={handleAddMore}
         onClearAll={handleClearAll}
         onConvert={handleConvert}
+        onOpenFolder={async (folderPath) => {
+          try {
+            // রাস্টের open_folder কমান্ড কল করা
+            await invoke("open_folder", { folderPath });
+          } catch (error) {
+            console.error("Failed to open folder:", error);
+            alert("Could not open the output folder.");
+          }
+        }}
       />
     </>
   );

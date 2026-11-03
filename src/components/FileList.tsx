@@ -14,11 +14,15 @@ import type { SelectedFile } from "@/data/types";
 
 type FileListProps = {
   files: SelectedFile[];
+  convertedFolders?: Record<string, string>;
+  convertingFileId?: string | null;
+  conversionProgress?: Record<string, number>;
   onRemove: (id: string) => void;
   onFormatChange: (id: string, format: string) => void;
   onAddMore: () => void;
   onClearAll: () => void;
   onConvert: () => void;
+  onOpenFolder?: (folderPath: string) => void;
 };
 
 function getFileIcon(type: string) {
@@ -28,13 +32,20 @@ function getFileIcon(type: string) {
   return <File className="text-ink/60 size-5" />;
 }
 
+const EMPTY_FOLDERS: Record<string, string> = {};
+const EMPTY_PROGRESS: Record<string, number> = {};
+
 export default function FileList({
   files,
+  convertedFolders = EMPTY_FOLDERS,
+  convertingFileId,
+  conversionProgress = EMPTY_PROGRESS,
   onRemove,
   onFormatChange,
   onAddMore,
   onClearAll,
   onConvert,
+  onOpenFolder,
 }: FileListProps) {
   return (
     <div className="bg-clay flex h-screen flex-col">
@@ -50,59 +61,109 @@ export default function FileList({
             {files.map((file) => (
               <div
                 key={file.id}
-                className="border-ink/10 bg-cream flex flex-col gap-4 rounded-xl border p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                className="border-ink/10 bg-cream flex flex-col gap-4 rounded-xl border p-4 shadow-sm"
               >
-                {/* File Info */}
-                <div className="flex items-center gap-4 overflow-hidden">
-                  <div className="bg-soft border-ink/5 flex size-10 shrink-0 items-center justify-center rounded-lg border">
-                    {getFileIcon(file.type)}
-                  </div>
-                  <div className="truncate">
-                    <p className="text-ink truncate text-sm font-medium">{file.name}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {file.size} • {file.type.split("/")[1]?.toUpperCase()}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Controls */}
-                <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-                  <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
-                    <RefreshCw className="size-3.5" />
-                    Convert
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  {/* File Info */}
+                  <div className="flex items-center gap-4 overflow-hidden">
+                    <div className="bg-soft border-ink/5 flex size-10 shrink-0 items-center justify-center rounded-lg border">
+                      {getFileIcon(file.type)}
+                    </div>
+                    <div className="truncate">
+                      <p className="text-ink truncate text-sm font-medium">{file.name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {file.size} • {file.type.split("/")[1]?.toUpperCase()}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Source Format Badge */}
-                  <span className="bg-soft text-ink rounded px-2 py-1 text-xs font-bold uppercase">
-                    {file.name.split(".").pop()}
-                  </span>
+                  {/* Controls */}
+                  <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+                    <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+                      <RefreshCw className="size-3.5" />
+                      Convert
+                    </div>
 
-                  <ArrowRight className="text-muted-foreground/50 size-4" />
+                    {/* Source Format Badge */}
+                    <span className="bg-soft text-ink rounded px-2 py-1 text-xs font-bold uppercase">
+                      {file.name.split(".").pop()}
+                    </span>
 
-                  {/* Target Format Dropdown */}
-                  <select
-                    value={file.targetFormat}
-                    onChange={(e) => onFormatChange(file.id, e.target.value)}
-                    className="border-plum/30 bg-plum/5 text-plum focus:border-plum focus:ring-plum rounded-md border px-3 py-1.5 text-sm font-medium transition-colors outline-none focus:ring-1"
-                  >
-                    <option value="" disabled>
-                      Select Format
-                    </option>
-                    {getAvailableFormatsForFile(file.type).map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                    <ArrowRight className="text-muted-foreground/50 size-4" />
+
+                    {/* Target Format Dropdown */}
+                    <select
+                      value={file.targetFormat}
+                      onChange={(e) => onFormatChange(file.id, e.target.value)}
+                      className="border-plum/30 bg-plum/5 text-plum focus:border-plum focus:ring-plum cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors outline-none focus:ring-1"
+                    >
+                      <option value="" disabled>
+                        Select Format
                       </option>
-                    ))}
-                  </select>
+                      {getAvailableFormatsForFile(file.type).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
 
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => onRemove(file.id)}
-                    className="text-muted-foreground hover:bg-soft hover:text-destructive rounded p-1.5 transition-colors"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => onRemove(file.id)}
+                      className="text-muted-foreground hover:bg-soft hover:text-destructive cursor-pointer rounded p-1.5 transition-colors"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Progress bar - only show when this file is actively converting or already done */}
+                {(convertingFileId === file.id || convertedFolders[file.id]) && (
+                  <div className="space-y-2">
+                    <div className="text-plum/70 flex items-center justify-between text-[11px] font-medium tracking-[0.12em] uppercase">
+                      <span>{convertingFileId === file.id ? "Processing" : "Completed"}</span>
+                      <span>
+                        {convertedFolders[file.id]
+                          ? "100%"
+                          : convertingFileId === file.id
+                            ? `${conversionProgress[file.id] ?? 0}%`
+                            : "0%"}
+                      </span>
+                    </div>
+
+                    {/* Track */}
+                    <div className="bg-soft relative h-2 w-full overflow-hidden rounded-full">
+                      {convertingFileId === file.id && !convertedFolders[file.id] ? (
+                        /* Indeterminate shimmer while converting */
+                        <div className="bg-plum/30 absolute inset-0 rounded-full">
+                          <div className="via-plum absolute inset-0 -translate-x-full animate-[shimmer_1.4s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent to-transparent" />
+                        </div>
+                      ) : (
+                        /* Determinate fill — 0% → 100% */
+                        <div
+                          className="bg-plum h-full rounded-full transition-all duration-700 ease-out"
+                          style={{
+                            width: convertedFolders[file.id]
+                              ? "100%"
+                              : `${conversionProgress[file.id] ?? 0}%`,
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {convertedFolders[file.id] && onOpenFolder && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => onOpenFolder(convertedFolders[file.id])}
+                          className="border-ink/15 bg-cream text-ink hover:bg-soft cursor-pointer rounded-md border px-3 py-1.5 text-xs font-medium transition"
+                        >
+                          Open folder
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
