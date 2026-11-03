@@ -52,7 +52,7 @@ function SplashScreen({ onComplete }: { onComplete?: () => void }) {
         />
 
         {/* Title */}
-        <h1 className="bg-primary font-heading animate-[shimmer_3s_ease-in-out_infinite] bg-[length:200%_auto] bg-clip-text text-center text-[clamp(1.7rem,2.5vw,2.2rem)] font-extrabold tracking-tight text-transparent">
+        <h1 className="font-heading text-ink text-center text-[clamp(1.7rem,2.5vw,2.2rem)] font-extrabold tracking-tight">
           Format Hub
         </h1>
 
