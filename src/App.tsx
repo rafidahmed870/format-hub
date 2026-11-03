@@ -1,4 +1,6 @@
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
+import Home from "@/widgets/Home";
 
 function App() {
   // const [greetMsg, setGreetMsg] = useState("");
@@ -10,12 +12,11 @@ function App() {
   // }
 
   return (
-    <>
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
-        <h1 className="text-3xl font-bold">Format Hub</h1>
-        <p>Developed by Rafid</p>
-      </div>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
