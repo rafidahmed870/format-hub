@@ -35,6 +35,28 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["bin/*"]
+    "resources": ["bin/*"],
+    "windows": {
+      "allowDowngrades": false,
+      "bundleVCRuntime": true,
+      "certificateThumbprint": null,
+      "digestAlgorithm": null,
+      "minimumWebview2Version": null,
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "displayLanguageSelector": false,
+        "compression": "lzma"
+      },
+      "signCommand": null,
+      "timestampUrl": null,
+      "tsp": false,
+      "webviewInstallMode": {
+        "silent": true,
+        "type": "embedBootstrapper"
+      },
+      "wix": null
+    }
   }
 }
