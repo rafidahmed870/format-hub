@@ -15,9 +15,12 @@ import type { SelectedFile } from "@/data/types";
 type FileListProps = {
   files: SelectedFile[];
   convertedFolders?: Record<string, string>;
-  convertingFileId?: string | null;
+  /** Ids of the files converting right now (several can run in parallel). */
+  convertingIds?: string[];
   conversionProgress?: Record<string, number>;
   sizeInfo?: Record<string, { before: number; after: number }>;
+  /** Id → error message for files that failed to convert. */
+  errors?: Record<string, string>;
   onRemove: (id: string) => void;
   onFormatChange: (id: string, format: string) => void;
   onAddMore: () => void;
@@ -36,6 +39,8 @@ function getFileIcon(type: string) {
 const EMPTY_FOLDERS: Record<string, string> = {};
 const EMPTY_PROGRESS: Record<string, number> = {};
 const EMPTY_SIZE: Record<string, { before: number; after: number }> = {};
+const EMPTY_IDS: string[] = [];
+const EMPTY_ERRORS: Record<string, string> = {};
 
 function formatSizeLabel(before: number, after: number): string {
   if (before === 0) return "";
@@ -49,9 +54,10 @@ function formatSizeLabel(before: number, after: number): string {
 export default function FileList({
   files,
   convertedFolders = EMPTY_FOLDERS,
-  convertingFileId,
+  convertingIds = EMPTY_IDS,
   conversionProgress = EMPTY_PROGRESS,
   sizeInfo = EMPTY_SIZE,
+  errors = EMPTY_ERRORS,
   onRemove,
   onFormatChange,
   onAddMore,
@@ -59,6 +65,8 @@ export default function FileList({
   onConvert,
   onOpenFolder,
 }: FileListProps) {
+  const converting = new Set(convertingIds);
+
   return (
     <div className="bg-clay flex h-screen flex-col">
       {/* Scrollable Area */}
@@ -129,70 +137,94 @@ export default function FileList({
                   </div>
                 </div>
 
-                {/* Progress bar - only show when this file is actively converting or already done */}
-                {(convertingFileId === file.id || convertedFolders[file.id]) && (
+                {/* Shown while converting, once done, or when it failed */}
+                {(converting.has(file.id) ||
+                  convertedFolders[file.id] ||
+                  errors[file.id]) && (
                   <div className="space-y-2">
                     <div className="text-plum/70 flex items-center justify-between text-[11px] font-medium tracking-[0.12em] uppercase">
-                      <span>{convertingFileId === file.id ? "Processing" : "Completed"}</span>
                       <span>
-                        {convertedFolders[file.id]
-                          ? "100%"
-                          : convertingFileId === file.id
-                            ? `${conversionProgress[file.id] ?? 0}%`
-                            : "0%"}
+                        {errors[file.id]
+                          ? "Failed"
+                          : convertedFolders[file.id]
+                            ? "Completed"
+                            : "Processing"}
                       </span>
-                    </div>
-
-                    {/* Track */}
-                    <div className="bg-soft relative h-2 w-full overflow-hidden rounded-full">
-                      {convertingFileId === file.id && !convertedFolders[file.id] ? (
-                        /* Indeterminate shimmer while converting */
-                        <div className="bg-plum/30 absolute inset-0 rounded-full">
-                          <div className="via-plum absolute inset-0 -translate-x-full animate-[shimmer_1.4s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent to-transparent" />
-                        </div>
-                      ) : (
-                        /* Determinate fill — 0% → 100% */
-                        <div
-                          className="bg-plum h-full rounded-full transition-all duration-700 ease-out"
-                          style={{
-                            width: convertedFolders[file.id]
-                              ? "100%"
-                              : `${conversionProgress[file.id] ?? 0}%`,
-                          }}
-                        />
+                      {!errors[file.id] && (
+                        <span>
+                          {convertedFolders[file.id]
+                            ? "100%"
+                            : `${conversionProgress[file.id] ?? 0}%`}
+                        </span>
                       )}
                     </div>
 
-                    {convertedFolders[file.id] && (
-                      <div className="flex items-center justify-between">
-                        {/* Size comparison label — left aligned */}
-                        {sizeInfo[file.id] ? (
-                          <span
-                            className={`text-[11px] font-medium ${
-                              sizeInfo[file.id].after < sizeInfo[file.id].before
-                                ? "text-green-600"
-                                : sizeInfo[file.id].after > sizeInfo[file.id].before
-                                  ? "text-amber-500"
-                                  : "text-muted-foreground"
-                            }`}
-                          >
-                            {formatSizeLabel(sizeInfo[file.id].before, sizeInfo[file.id].after)}
-                          </span>
-                        ) : (
-                          <span />
-                        )}
+                    {errors[file.id] ? (
+                      <p className="text-destructive text-[11px] font-medium">
+                        {errors[file.id]}
+                      </p>
+                    ) : (
+                      <>
+                        {/* Track */}
+                        <div className="bg-soft relative h-2 w-full overflow-hidden rounded-full">
+                          {converting.has(file.id) && !convertedFolders[file.id] ? (
+                            (conversionProgress[file.id] ?? 0) === 0 ? (
+                              /* No percentage yet (e.g. still images) → shimmer */
+                              <div className="bg-plum/30 absolute inset-0 rounded-full">
+                                <div className="via-plum absolute inset-0 -translate-x-full animate-[shimmer_1.4s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent to-transparent" />
+                              </div>
+                            ) : (
+                              /* Live percentage streamed from FFmpeg */
+                              <div
+                                className="bg-plum h-full rounded-full transition-all duration-300 ease-out"
+                                style={{ width: `${conversionProgress[file.id] ?? 0}%` }}
+                              />
+                            )
+                          ) : (
+                            /* Determinate fill — 0% → 100% */
+                            <div
+                              className="bg-plum h-full rounded-full transition-all duration-700 ease-out"
+                              style={{
+                                width: convertedFolders[file.id]
+                                  ? "100%"
+                                  : `${conversionProgress[file.id] ?? 0}%`,
+                              }}
+                            />
+                          )}
+                        </div>
 
-                        {/* Open folder button — right side */}
-                        {onOpenFolder && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenFolder(convertedFolders[file.id])}
-                            className="border-ink/15 bg-cream text-ink hover:bg-soft cursor-pointer rounded-md border px-3 py-1.5 text-xs font-medium transition"
-                          >
-                            Open folder
-                          </button>
+                        {convertedFolders[file.id] && (
+                          <div className="flex items-center justify-between">
+                            {/* Size comparison label — left aligned */}
+                            {sizeInfo[file.id] ? (
+                              <span
+                                className={`text-[11px] font-medium ${
+                                  sizeInfo[file.id].after < sizeInfo[file.id].before
+                                    ? "text-green-600"
+                                    : sizeInfo[file.id].after > sizeInfo[file.id].before
+                                      ? "text-amber-500"
+                                      : "text-muted-foreground"
+                                }`}
+                              >
+                                {formatSizeLabel(sizeInfo[file.id].before, sizeInfo[file.id].after)}
+                              </span>
+                            ) : (
+                              <span />
+                            )}
+
+                            {/* Open folder button — right side */}
+                            {onOpenFolder && (
+                              <button
+                                type="button"
+                                onClick={() => onOpenFolder(convertedFolders[file.id])}
+                                className="border-ink/15 bg-cream text-ink hover:bg-soft cursor-pointer rounded-md border px-3 py-1.5 text-xs font-medium transition"
+                              >
+                                Open folder
+                              </button>
+                            )}
+                          </div>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                 )}

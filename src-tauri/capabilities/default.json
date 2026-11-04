@@ -27,6 +27,7 @@
       "deny": []
     },
     "shell:allow-spawn",
-    "shell:allow-execute"
+    "shell:allow-execute",
+    "notification:default"
   ]
 }
