@@ -210,7 +210,10 @@ export default function Process() {
           if (result.sizeBefore != null && result.sizeAfter != null) {
             setSizeInfo((prev) => ({
               ...prev,
-              [matched.id]: { before: result.sizeBefore as number, after: result.sizeAfter as number },
+              [matched.id]: {
+                before: result.sizeBefore as number,
+                after: result.sizeAfter as number,
+              },
             }));
           }
         }

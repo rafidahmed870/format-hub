@@ -138,9 +138,7 @@ export default function FileList({
                 </div>
 
                 {/* Shown while converting, once done, or when it failed */}
-                {(converting.has(file.id) ||
-                  convertedFolders[file.id] ||
-                  errors[file.id]) && (
+                {(converting.has(file.id) || convertedFolders[file.id] || errors[file.id]) && (
                   <div className="space-y-2">
                     <div className="text-plum/70 flex items-center justify-between text-[11px] font-medium tracking-[0.12em] uppercase">
                       <span>
@@ -160,9 +158,7 @@ export default function FileList({
                     </div>
 
                     {errors[file.id] ? (
-                      <p className="text-destructive text-[11px] font-medium">
-                        {errors[file.id]}
-                      </p>
+                      <p className="text-destructive text-[11px] font-medium">{errors[file.id]}</p>
                     ) : (
                       <>
                         {/* Track */}
